@@ -15,8 +15,8 @@ docker compose up -d
 Access the IPT at `http://<host>:8080` and complete the setup wizard. The `./iptdata`
 directory is mounted at `/srv/ipt` inside the container.
 
-For multiple instances on one host, copy the directory and change the port mapping, e.g.
-`8083:8080` for nonode, `8081:8080` for bioecoocean.
+Add a matching `location` block in nginx (proxying to your chosen port)
+and set the IPT base URL in Admin → Configuration accordingly.
 
 ## Upgrade
 
@@ -31,55 +31,12 @@ docker compose up -d
 curl -s http://localhost:8080/about | grep -i version
 ```
 
-The `chown` step is required when upgrading from older `gbif/ipt` images that ran as root.
 Adjust the port in the `curl` command if your instance does not use 8080.
 
 ## Host requirements
 
-This deployment assumes the host meets a few requirements beyond having Docker installed.
-The compose configuration includes memory limits and a `memswap_limit` setting that depend
-on host-level swap being available.
-
-### Recommended host specifications
-
-- At least 4 GB RAM for running multiple IPT containers comfortably.
-  A 2 GB host can work but may require swap (see below)
-
-### Swap configuration
-
-The `memswap_limit` setting in `docker-compose.yml` allows containers to spill cold memory
-pages into host swap when under RAM pressure. This is meaningless unless swap is actually
-configured on the host.
-
-_If the host has no swap configured, the `memswap_limit` setting is effectively null.
-Containers will still be bounded by `mem_limit`, but will be OOM-killed under memory
-pressure rather than spilling into swap. The deployment will run, but with reduced
-resilience._
-
-To create a 4 GB swap file on a host without one:
-
-```
-fallocate -l 4G /swapfile
-chmod 600 /swapfile
-mkswap /swapfile
-swapon /swapfile
-echo '/swapfile none swap sw 0 0' >> /etc/fstab
-```
-
-Verify it's active:
-
-```
-free -h
-```
-
-The `Swap` line should show 4.0Gi total.
-
-For a JVM-heavy server, also lower swappiness so the kernel prefers keeping things in RAM:
-
-```
-sysctl vm.swappiness=10
-echo 'vm.swappiness=10' >> /etc/sysctl.conf
-```
+Configure host swap if running multiple instances on a low-RAM machine. The `memswap_limit`
+setting in `docker-compose.yml` only helps when swap is available on the host.
 
 ### Memory limits
 
@@ -99,12 +56,3 @@ To check whether a container has been OOM-killed:
 ```
 docker inspect <container-name> --format='OOMKilled={{.State.OOMKilled}} RestartCount={{.RestartCount}}'
 ```
-
-### Background
-
-These settings were introduced after an incident on 2026-05-20 in which four IPT containers
-running on a 1.9 GB host without swap exhausted available RAM. Without explicit limits, a
-single JVM under pressure could claim enough memory to destabilise the entire host.
-
-The `restart: unless-stopped` policy on each container ensures automatic recovery from
-crashes or host reboots while still allowing deliberate manual stops for maintenance.
