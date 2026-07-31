@@ -7,7 +7,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./iptdata:/usr/local/ipt/data
+      - ./iptdata:/srv/ipt
     restart: unless-stopped
     environment:
       - JAVA_OPTS=-Xms128m -Xmx384m -XX:MaxMetaspaceSize=192m -XX:+UseSerialGC
