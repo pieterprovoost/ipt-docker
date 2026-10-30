@@ -1,1 +1,1 @@
-FROM gbif/ipt:3.3.3
+FROM gbif/ipt:3.3.7

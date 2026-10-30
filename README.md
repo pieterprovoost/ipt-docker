@@ -5,18 +5,32 @@ Docker container for the GBIF IPT, based on the official [gbif/ipt](https://hub.
 ## New instance
 
 Clone this repo into a directory per IPT (e.g. `ipt-docker-nonode`). Edit `docker-compose.yml`
-to set a unique `container_name` and host port if needed. Then:
+to set a unique `container_name` and host port if needed. Keep the host port bound to
+`127.0.0.1` so Tomcat is not reachable past nginx. Then:
 
 ```
 chown -R 999:999 iptdata
 docker compose up -d
 ```
 
-Access the IPT at `http://<host>:8080` and complete the setup wizard. The `./iptdata`
-directory is mounted at `/srv/ipt` inside the container.
+The `./iptdata` directory is mounted at `/srv/ipt` inside the container. Complete the
+setup wizard from the server itself at `http://127.0.0.1:8080`, then proxy the instance
+in nginx and set the IPT base URL in Admin > Configuration.
 
-Add a matching `location` block in nginx (proxying to your chosen port)
-and set the IPT base URL in Admin → Configuration accordingly.
+Once setup is finished, deny the setup wizard on the public path. Prefix locations are
+matched before the proxy location:
+
+```
+location ^~ /secretariat/setup {
+    return 403;
+}
+
+location /secretariat {
+    proxy_pass http://127.0.0.1:8080/;
+}
+```
+
+Use the instance's own public path and localhost port in place of `secretariat` and `8080`.
 
 ## Upgrade
 
